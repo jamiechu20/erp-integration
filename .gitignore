@@ -1,0 +1,12 @@
+CONTEXT.md
+.env
+progress/plan.md
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# macOS
+.DS_Store
