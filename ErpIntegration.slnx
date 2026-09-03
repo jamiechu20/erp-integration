@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ErpSync.Api/ErpSync.Api.csproj" />
+    <Project Path="src/ErpSync.Application/ErpSync.Application.csproj" />
+    <Project Path="src/ErpSync.Domain/ErpSync.Domain.csproj" />
+    <Project Path="src/ErpSync.Infrastructure/ErpSync.Infrastructure.csproj" />
+    <Project Path="src/MockSap.Api/MockSap.Api.csproj" />
+  </Folder>
+</Solution>
