@@ -1,6 +1,36 @@
 @MockSap.Api_HostAddress = http://localhost:5173
 
-GET {{MockSap.Api_HostAddress}}/weatherforecast/
+GET {{MockSap.Api_HostAddress}}/PurchaseOrder?$expand=to_Item
 Accept: application/json
+
+###
+
+POST {{MockSap.Api_HostAddress}}/PurchaseOrder
+Content-Type: application/json
+
+{
+  "PurchaseOrder": "4500000099",
+  "PurchaseOrderType": "NB",
+  "CompanyCode": "1000",
+  "PurchasingOrganization": "US01",
+  "PurchasingGroup": "A10",
+  "Supplier": "2000000099",
+  "PurchaseOrderDate": "2026-09-05",
+  "DocumentCurrency": "USD",
+  "PurchasingCompletenessStatus": true,
+  "to_Item": [
+    {
+      "PurchaseOrder": "4500000099",
+      "PurchaseOrderItem": "00010",
+      "Material": "MAT-9999",
+      "Plant": "PL01",
+      "OrderQuantity": 10,
+      "PurchaseOrderQuantityUnit": "EA",
+      "NetPriceAmount": 10.0,
+      "NetAmount": 100,
+      "DeliveryDate": "2026-10-01"
+    }
+  ]
+}
 
 ###
