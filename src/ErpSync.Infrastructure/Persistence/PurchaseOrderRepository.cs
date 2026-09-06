@@ -41,4 +41,16 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
     {
         await _dbContext.PurchaseOrders.AddAsync(purchaseOrder, cancellationToken);
     }
+
+    public async Task<Dictionary<string, (decimal Sum, int Count)>> GetMaterialPriceStatsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var stats = await _dbContext.PurchaseOrderItems
+            .AsNoTracking()
+            .GroupBy(i => i.Material)
+            .Select(g => new { Material = g.Key, Sum = g.Sum(i => i.NetPriceAmount), Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return stats.ToDictionary(s => s.Material, s => (s.Sum, s.Count));
+    }
 }

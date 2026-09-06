@@ -19,4 +19,10 @@ public interface IPurchaseOrderRepository
         IEnumerable<string> purchaseOrderIds, CancellationToken cancellationToken = default);
 
     Task AddAsync(PurchaseOrder purchaseOrder, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 各 Material 目前已存在品項的單價加總與筆數，供價格異常規則（spec.md §8 規則二）計算歷史均價。
+    /// </summary>
+    Task<Dictionary<string, (decimal Sum, int Count)>> GetMaterialPriceStatsAsync(
+        CancellationToken cancellationToken = default);
 }
