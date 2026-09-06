@@ -53,4 +53,31 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
 
         return stats.ToDictionary(s => s.Material, s => (s.Sum, s.Count));
     }
+
+    public async Task<List<PurchaseOrder>> GetAllAsync(
+        string? supplier, string? companyCode, CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.PurchaseOrders.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(supplier))
+        {
+            query = query.Where(o => o.Supplier == supplier);
+        }
+
+        if (!string.IsNullOrWhiteSpace(companyCode))
+        {
+            query = query.Where(o => o.CompanyCode == companyCode);
+        }
+
+        return await query.OrderBy(o => o.PurchaseOrderNumber).ToListAsync(cancellationToken);
+    }
+
+    public async Task<PurchaseOrder?> GetByIdWithItemsAsync(
+        string purchaseOrderId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.PurchaseOrders
+            .AsNoTracking()
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.PurchaseOrderNumber == purchaseOrderId, cancellationToken);
+    }
 }

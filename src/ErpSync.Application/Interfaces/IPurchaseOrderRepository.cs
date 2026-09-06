@@ -25,4 +25,16 @@ public interface IPurchaseOrderRepository
     /// </summary>
     Task<Dictionary<string, (decimal Sum, int Count)>> GetMaterialPriceStatsAsync(
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 查詢已同步採購單，可用 supplier、companyCode 篩選（spec.md §10）。
+    /// </summary>
+    Task<List<PurchaseOrder>> GetAllAsync(
+        string? supplier, string? companyCode, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 依 PurchaseOrder id 查單一採購單（含品項），查不到回傳 null。
+    /// </summary>
+    Task<PurchaseOrder?> GetByIdWithItemsAsync(
+        string purchaseOrderId, CancellationToken cancellationToken = default);
 }

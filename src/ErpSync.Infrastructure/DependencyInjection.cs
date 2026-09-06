@@ -22,6 +22,9 @@ public static class DependencyInjection
         services.AddScoped<IAnomalyRepository, AnomalyRepository>();
         services.AddScoped<ISyncLogRepository, SyncLogRepository>();
         services.AddScoped<IPurchaseOrderSyncService, PurchaseOrderSyncService>();
+        services.AddScoped<IPurchaseOrderQueryService, PurchaseOrderQueryService>();
+        services.AddScoped<IAnomalyQueryService, AnomalyQueryService>();
+        services.AddScoped<ISyncLogQueryService, SyncLogQueryService>();
 
         services.AddHttpClient<ISapPurchaseOrderClient, SapPurchaseOrderClient>(client =>
         {
