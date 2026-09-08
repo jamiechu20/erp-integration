@@ -1,0 +1,27 @@
+/* 功能性樣式為主，不做 UI 美化（CLAUDE.md 範圍界線） */
+* { box-sizing: border-box; }
+/* 固定淺色配色，避免瀏覽器深色模式把背景吃掉、文字看不見 */
+:root { color-scheme: light; }
+body { margin: 0; background: #fff; font-family: system-ui, "Noto Sans TC", sans-serif; font-size: 14px; color: #222; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #ddd; }
+header h1 { font-size: 18px; margin: 0; }
+.actions { display: flex; align-items: center; gap: 12px; }
+.status { color: #666; }
+button { padding: 6px 12px; cursor: pointer; }
+.tabs { display: flex; gap: 4px; padding: 12px 20px 0; }
+.tab { background: #f2f2f2; border: 1px solid #ddd; border-bottom: none; }
+.tab.active { background: #fff; font-weight: bold; }
+main { padding: 0 20px 40px; }
+.panel { border-top: 1px solid #ddd; padding-top: 16px; }
+.hidden { display: none; }
+.filters { display: flex; gap: 16px; align-items: end; margin-bottom: 12px; flex-wrap: wrap; }
+.filters label { display: flex; flex-direction: column; gap: 4px; }
+input, select { padding: 4px 6px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+th { background: #f7f7f7; }
+tbody tr.order-row { cursor: pointer; }
+tbody tr.order-row:hover { background: #f4f8ff; }
+tr.items-row td { background: #fafafa; padding: 0 8px 8px 24px; }
+.empty { color: #888; padding: 12px 0; }
+.hint { color: #888; }

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ERP 採購單同步與異常監控</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>ERP 採購單同步與異常監控</h1>
+    <div class="actions">
+      <span id="status" class="status"></span>
+      <button id="sync-btn" type="button">立即同步</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button type="button" class="tab active" data-tab="orders">採購單</button>
+    <button type="button" class="tab" data-tab="anomalies">異常清單</button>
+    <button type="button" class="tab" data-tab="logs">同步紀錄</button>
+  </nav>
+
+  <main>
+    <section id="tab-orders" class="panel">
+      <div class="filters">
+        <label>Supplier <input id="filter-supplier" type="text" placeholder="例如 USSU-VSF" /></label>
+        <label>CompanyCode <input id="filter-company" type="text" placeholder="例如 1000" /></label>
+        <button id="orders-filter-btn" type="button">篩選</button>
+      </div>
+      <table id="orders-table">
+        <thead>
+          <tr>
+            <th>採購單號</th><th>類型</th><th>公司代碼</th><th>採購組織</th>
+            <th>供應商</th><th>單據日期</th><th>幣別</th><th>結案</th><th>最後同步</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="hint">點一列可展開該採購單的品項。</p>
+    </section>
+
+    <section id="tab-anomalies" class="panel hidden">
+      <div class="filters">
+        <label>RuleType
+          <select id="filter-rule">
+            <option value="">全部</option>
+            <option value="Overdue">Overdue（逾期未交貨）</option>
+            <option value="PriceVariance">PriceVariance（價格異常）</option>
+          </select>
+        </label>
+      </div>
+      <table id="anomalies-table">
+        <thead>
+          <tr><th>#</th><th>規則</th><th>採購單號</th><th>品項</th><th>觸發原因</th><th>偵測時間</th><th>通知時間</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="tab-logs" class="panel hidden">
+      <table id="logs-table">
+        <thead>
+          <tr><th>#</th><th>執行時間</th><th>抓取筆數</th><th>新增筆數</th><th>異常筆數</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
