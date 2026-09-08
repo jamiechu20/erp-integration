@@ -128,16 +128,31 @@ Response 範例：
 表應分別新增對應 `RuleType=Overdue`、`RuleType=PriceVariance` 各 1 筆；其餘 4 筆正常品項
 不應觸發任何 Anomaly；同一品項重複同步不應重複寫入。
 
-## 9. 通知設計
+## 9. 通知設計與 Log
 
-- 每筆新建立的 Anomaly，透過 MailKit 寄一封 Email（開發階段可用 Mailtrap/Papercut 等本機
-  SMTP 測試工具，不寄真實信箱）
-- Email 內容：異常類型、採購單號、品項、觸發原因（例如「單價 60 元，同物料歷史均價 25 元，
-  偏差 140%」）
-- 寄送成功後更新 Anomaly 的 `NotifiedAt`
+### 9.1 Email 通知
 
-**驗收**：本機 SMTP 測試工具（Mailtrap/Papercut）需能收到與 Anomaly 內容相符的通知信；
-寄送成功後對應 Anomaly 的 `NotifiedAt` 需被寫入。
+- 每筆 `NotifiedAt` 尚未寫入的 Anomaly，透過 MailKit 寄一封 Email（開發階段用 Mailpit/Papercut
+  等本機 SMTP 測試工具，不寄真實信箱）
+- 寄送時機：同步流程把新異常寫入 DB（`SaveChanges`）之後，再撈出所有 `NotifiedAt IS NULL`
+  的異常逐筆寄送。用「未通知」而不是「本次新增」當寄送對象，是為了讓上次寄失敗的異常
+  在下次同步自動補寄，不需要另外做 retry 機制
+- Email 內容：異常類型、採購單號、品項編號、觸發原因（例如「單價 60 元，同物料歷史均價
+  25 元，偏差 140%」）、偵測時間
+- 寄送成功後更新該 Anomaly 的 `NotifiedAt`；寄送失敗只記 log，不讓同步流程失敗
+  （同步是主要職責，通知是附加行為），`NotifiedAt` 維持 null 等下次同步補寄
+- SMTP 連線資訊放在設定檔 `Smtp` 節點：`Host` / `Port` / `From` / `To` / `Enabled`，
+  `Enabled=false` 時整個通知流程跳過（測試或無 SMTP 環境用）
+
+**驗收**：本機 SMTP 測試工具需能收到與 Anomaly 內容相符的通知信；寄送成功後對應 Anomaly 的
+`NotifiedAt` 需被寫入；SMTP 關閉或連不上時，同步本身仍需正常完成並回傳結果。
+
+### 9.2 Serilog
+
+- `ErpSync.Api` 以 Serilog 取代預設 logging，同時輸出到 Console 與檔案
+  （`logs/erpsync-.log`，逐日 rolling）
+- 關鍵流程需留下結構化 log：同步開始/結束（含抓取筆數、新增筆數、異常筆數）、
+  偵測到異常、Email 寄送成功/失敗、排程 job 觸發與例外
 
 ## 10. ErpSync.Api 端點
 
@@ -152,13 +167,27 @@ Response 範例：
 **驗收**：每個端點需能用 Postman/curl 實際呼叫成功，篩選參數（`supplier`、`companyCode`、
 `ruleType`）需能正確過濾結果。
 
-## 11. Out of Scope（Non-Goals 的具體對應）
+## 11. 前端頁面（`ErpSync.Api/wwwroot`）
+
+純 HTML + JavaScript（無框架），由 `ErpSync.Api` 以靜態檔案直接提供，同源呼叫 §10 的查詢 API。
+
+- 三個分頁：**採購單**、**異常清單**、**同步紀錄**
+- 採購單頁：supplier / companyCode 篩選欄位；點一列展開該採購單的品項（呼叫
+  `/api/purchase-orders/{id}/items`）
+- 異常清單頁：ruleType 下拉篩選（全部 / Overdue / PriceVariance），顯示是否已通知（`NotifiedAt`）
+- 同步紀錄頁：列出每次同步的時間與筆數統計
+- 右上角「立即同步」按鈕呼叫 `POST /api/sync/run`，完成後重新載入當前分頁資料
+
+**驗收**：頁面在瀏覽器打開後，三個分頁都能顯示 DB 內的實際資料；篩選欄位變更後清單需正確
+過濾；按下「立即同步」後同步紀錄頁需多一筆記錄。
+
+## 12. Out of Scope（Non-Goals 的具體對應）
 
 - 前端只做清單呈現與篩選，不做圖表視覺化
 - 不處理多幣別金額換算比較（NetAmount 比較僅限同幣別內的簡單場景）
 - 不處理採購單狀態機轉換（例如核准/駁回流程）
 
-## 12. Demo Script
+## 13. Demo Script
 
 1. 啟動 Mock API + ErpSync.Api，觸發第一次同步
 2. 前端「異常清單」直接顯示 2 筆異常（1 筆逾期、1 筆價格異常）——不需要臨時操作，種子資料已內建
