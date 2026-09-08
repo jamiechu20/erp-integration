@@ -23,9 +23,19 @@ public class PurchaseOrderSyncJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
-        var result = await _syncService.SyncAsync(context.CancellationToken);
-        _logger.LogInformation(
-            "排程同步完成：Fetched={RecordsFetched} New={RecordsNew} Anomalies={AnomaliesFound}",
-            result.RecordsFetched, result.RecordsNew, result.AnomaliesFound);
+        _logger.LogInformation("排程觸發同步（trigger {TriggerKey}）", context.Trigger.Key);
+
+        try
+        {
+            var result = await _syncService.SyncAsync(context.CancellationToken);
+            _logger.LogInformation(
+                "排程同步完成：Fetched={RecordsFetched} New={RecordsNew} Anomalies={AnomaliesFound}",
+                result.RecordsFetched, result.RecordsNew, result.AnomaliesFound);
+        }
+        catch (Exception ex)
+        {
+            // 單次同步失敗（例如 Mock API 沒開）不該讓排程停掉，記 log 後等下一次觸發
+            _logger.LogError(ex, "排程同步失敗，將於下次觸發重試");
+        }
     }
 }

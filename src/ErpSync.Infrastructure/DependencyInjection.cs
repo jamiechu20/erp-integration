@@ -1,5 +1,6 @@
 using ErpSync.Application.Interfaces;
 using ErpSync.Application.Services;
+using ErpSync.Infrastructure.Notifications;
 using ErpSync.Infrastructure.Persistence;
 using ErpSync.Infrastructure.Sap;
 using ErpSync.Infrastructure.Scheduling;
@@ -25,6 +26,9 @@ public static class DependencyInjection
         services.AddScoped<IPurchaseOrderQueryService, PurchaseOrderQueryService>();
         services.AddScoped<IAnomalyQueryService, AnomalyQueryService>();
         services.AddScoped<ISyncLogQueryService, SyncLogQueryService>();
+
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        services.AddScoped<IAnomalyNotifier, SmtpAnomalyNotifier>();
 
         services.AddHttpClient<ISapPurchaseOrderClient, SapPurchaseOrderClient>(client =>
         {

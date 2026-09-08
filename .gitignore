@@ -1,6 +1,7 @@
 CONTEXT.md
 .env
 progress/plan.md
+progress/day4-summary.html
 
 # .NET
 bin/
@@ -10,3 +11,6 @@ obj/
 
 # macOS
 .DS_Store
+
+# Serilog 輸出
+logs/

@@ -1,6 +1,7 @@
 using ErpSync.Application.Interfaces;
 using ErpSync.Application.Mapping;
 using ErpSync.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace ErpSync.Application.Services;
 
@@ -17,23 +18,31 @@ public class PurchaseOrderSyncService : IPurchaseOrderSyncService
     private readonly IAnomalyRepository _anomalyRepository;
     private readonly ISyncLogRepository _syncLogRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAnomalyNotifier _notifier;
+    private readonly ILogger<PurchaseOrderSyncService> _logger;
 
     public PurchaseOrderSyncService(
         ISapPurchaseOrderClient sapClient,
         IPurchaseOrderRepository purchaseOrderRepository,
         IAnomalyRepository anomalyRepository,
         ISyncLogRepository syncLogRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAnomalyNotifier notifier,
+        ILogger<PurchaseOrderSyncService> logger)
     {
         _sapClient = sapClient;
         _purchaseOrderRepository = purchaseOrderRepository;
         _anomalyRepository = anomalyRepository;
         _syncLogRepository = syncLogRepository;
         _unitOfWork = unitOfWork;
+        _notifier = notifier;
+        _logger = logger;
     }
 
     public async Task<SyncResult> SyncAsync(CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("開始同步採購單");
+
         var sapOrders = await _sapClient.GetPurchaseOrdersAsync(cancellationToken);
         var existingItemKeys = await _purchaseOrderRepository.GetExistingItemKeysAsync(cancellationToken);
         var trackedHeaders = await _purchaseOrderRepository.GetTrackedByIdsAsync(
@@ -91,6 +100,13 @@ public class PurchaseOrderSyncService : IPurchaseOrderSyncService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // 先存檔再寄信：Anomaly 拿到 Id 之後才有東西可以回寫 NotifiedAt（spec.md §9.1）
+        await NotifyPendingAnomaliesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "同步完成：抓取 {RecordsFetched} 筆、新增 {RecordsNew} 筆、異常 {AnomaliesFound} 筆",
+            recordsFetched, recordsNew, anomaliesFound);
+
         return new SyncResult(recordsFetched, recordsNew, syncLog.AnomaliesFound);
     }
 
@@ -121,6 +137,8 @@ public class PurchaseOrderSyncService : IPurchaseOrderSyncService
                 },
                 cancellationToken);
             anomalyCount++;
+            _logger.LogInformation("偵測到逾期異常：PO {PurchaseOrder}-{ItemNumber}，交期 {DeliveryDate}",
+                item.PurchaseOrder, item.PurchaseOrderItemNumber, item.DeliveryDate);
         }
 
         materialPriceStats.TryGetValue(item.Material, out var stats);
@@ -142,11 +160,45 @@ public class PurchaseOrderSyncService : IPurchaseOrderSyncService
                     },
                     cancellationToken);
                 anomalyCount++;
+                _logger.LogInformation(
+                    "偵測到價格異常：PO {PurchaseOrder}-{ItemNumber}，單價 {NetPrice}、均價 {AveragePrice}、偏差 {Deviation:P0}",
+                    item.PurchaseOrder, item.PurchaseOrderItemNumber, item.NetPriceAmount, averagePrice, deviation);
             }
         }
 
         materialPriceStats[item.Material] = (stats.Sum + item.NetPriceAmount, stats.Count + 1);
 
         return anomalyCount;
+    }
+
+    /// <summary>
+    /// 撈出所有還沒通知的異常逐筆寄送，成功才寫 NotifiedAt（spec.md §9.1）。
+    /// 用「未通知」而不是「本次新增」當寄送對象，上次寄失敗的下次同步會自動補寄。
+    /// </summary>
+    private async Task NotifyPendingAnomaliesAsync(CancellationToken cancellationToken)
+    {
+        var pending = await _anomalyRepository.GetUnnotifiedAsync(cancellationToken);
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        var notifiedCount = 0;
+        foreach (var anomaly in pending)
+        {
+            if (await _notifier.NotifyAsync(anomaly, cancellationToken))
+            {
+                anomaly.NotifiedAt = DateTime.UtcNow;
+                notifiedCount++;
+            }
+        }
+
+        if (notifiedCount > 0)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        _logger.LogInformation("異常通知：待通知 {PendingCount} 筆，成功寄出 {NotifiedCount} 筆",
+            pending.Count, notifiedCount);
     }
 }

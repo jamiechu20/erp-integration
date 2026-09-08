@@ -30,4 +30,12 @@ public class AnomalyRepository : IAnomalyRepository
 
         return await query.OrderByDescending(a => a.DetectedAt).ToListAsync(cancellationToken);
     }
+
+    public async Task<List<Anomaly>> GetUnnotifiedAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Anomalies
+            .Where(a => a.NotifiedAt == null)
+            .OrderBy(a => a.DetectedAt)
+            .ToListAsync(cancellationToken);
+    }
 }
