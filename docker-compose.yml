@@ -1,0 +1,56 @@
+# 本機一鍵啟動整套 demo 環境（spec.md §13.1）：
+#   docker compose up -d --build   → http://localhost:8080 前端、http://localhost:8025 Mailpit
+# SA 密碼可用 MSSQL_SA_PASSWORD 環境變數覆寫，預設值只給本機開發用。
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: erpsync-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-ErpSync_dev_1234}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: erpsync-mailpit
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+
+  mocksap:
+    build:
+      context: .
+      dockerfile: src/MockSap.Api/Dockerfile
+    container_name: erpsync-mocksap
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+    ports:
+      - "5173:8080"
+
+  erpsync:
+    build:
+      context: .
+      dockerfile: src/ErpSync.Api/Dockerfile
+    container_name: erpsync-api
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      # 雙底線是 .NET 設定的階層分隔符號，會覆寫 appsettings.json 的對應節點
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=ErpSync;User Id=sa;Password=${MSSQL_SA_PASSWORD:-ErpSync_dev_1234};TrustServerCertificate=True"
+      SapApi__BaseUrl: "http://mocksap:8080"
+      Smtp__Host: "mailpit"
+      Smtp__Port: "1025"
+      Sync__IntervalMinutes: "1"
+      Database__AutoMigrate: "true"      # 啟動時自動套用 Migration（SQL Server 還沒起來會重試）
+      EnableHttpsRedirection: "false"    # 容器內只跑 HTTP，沒有憑證
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sqlserver
+      - mailpit
+      - mocksap
+
+volumes:
+  sqlserver-data:

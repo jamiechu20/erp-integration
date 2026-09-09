@@ -224,7 +224,8 @@ Response 範例：
 - 兩個 API 各自一份多階段 build 的 `Dockerfile`（`sdk` 階段 publish、`aspnet` 階段執行）
 - 連線字串、`SapApi:BaseUrl`、`Smtp:Host` 以環境變數覆寫 `appsettings.json`，
   程式碼不需要為容器環境做任何分支
-- 容器內不做 HTTPS 轉址（沒有憑證），`ErpSync.Api` 只在非容器環境啟用 `UseHttpsRedirection`
+- 容器內不做 HTTPS 轉址（沒有憑證），以設定 `EnableHttpsRedirection`（預設 true）控制，
+  compose 內設為 false
 - DB schema 由 `ErpSync.Api` 啟動時自動套用 Migration（設定 `Database:AutoMigrate=true` 才執行），
   避免容器環境還要另外跑 `dotnet ef database update`；SQL Server 容器啟動較慢，
   套用前以重試等待其就緒

@@ -1,4 +1,5 @@
 using ErpSync.Infrastructure;
+using ErpSync.Infrastructure.Persistence;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,12 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// 容器/雲端環境用 Database:AutoMigrate=true 讓 API 啟動時自動建表（spec.md §13.1）
+if (app.Configuration.GetValue("Database:AutoMigrate", false))
+{
+    await app.Services.MigrateDatabaseAsync();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -26,7 +33,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 
-app.UseHttpsRedirection();
+// 容器內只跑 HTTP（沒有憑證），用設定關掉轉址（spec.md §13.1）
+if (app.Configuration.GetValue("EnableHttpsRedirection", true))
+{
+    app.UseHttpsRedirection();
+}
 
 // 前端純 HTML+JS 放在 wwwroot，由同一個 process 提供靜態檔案（spec.md §11）
 app.UseDefaultFiles();
