@@ -6,4 +6,7 @@
     <Project Path="src/ErpSync.Infrastructure/ErpSync.Infrastructure.csproj" />
     <Project Path="src/MockSap.Api/MockSap.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ErpSync.Application.Tests/ErpSync.Application.Tests.csproj" />
+  </Folder>
 </Solution>
