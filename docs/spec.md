@@ -181,13 +181,78 @@ Response 範例：
 **驗收**：頁面在瀏覽器打開後，三個分頁都能顯示 DB 內的實際資料；篩選欄位變更後清單需正確
 過濾；按下「立即同步」後同步紀錄頁需多一筆記錄。
 
-## 12. Out of Scope（Non-Goals 的具體對應）
+## 12. 測試策略（`tests/ErpSync.Application.Tests`）
+
+測試框架用 xUnit，範圍只覆蓋 **Application 層的核心邏輯**（`PurchaseOrderSyncService`），
+不對 Controller、EF Core Repository、MailKit 寄信做整合測試——Repository 與寄信在開發過程
+已用本機 SQL Server 與 Mailpit 端到端驗證過，單元測試的價值集中在「規則判斷正確與否」。
+
+- 外部相依（`ISapPurchaseOrderClient` / 各 Repository / `IUnitOfWork` / `IAnomalyNotifier`）
+  一律用手寫的 in-memory Fake，不引入 mock 框架：Fake 直接持有 List/Dictionary，
+  斷言時讀 Fake 的內容即可，讀起來比 mock 的 Setup/Verify 更接近「同步跑完 DB 長什麼樣」
+- 測項對應 §8 的驗收條件：
+
+| # | 測項 | 期望 |
+|---|---|---|
+| 1 | 逾期且未完成收貨的品項 | 產生 1 筆 `Overdue` |
+| 2 | 逾期但 `PurchasingCompletenessStatus == true` | 不產生 Anomaly |
+| 3 | 交期未到且未完成收貨 | 不產生 Anomaly |
+| 4 | 物料第一次出現（無歷史均價） | 不判斷價格規則，不產生 Anomaly |
+| 5 | 單價偏離歷史均價超過 30%（偏高、偏低各一） | 產生 1 筆 `PriceVariance`，`Detail` 含偏差百分比 |
+| 6 | 單價偏離未超過 30%（含剛好 30% 的邊界） | 不產生 Anomaly |
+| 7 | 同一批同步中，同物料第二筆與第一筆比價 | 均價在同批資料內逐筆累加後生效 |
+| 8 | 本地 DB 已存在的品項再次同步 | 不重複寫入、不重複產生 Anomaly |
+| 9 | 一次同步結束 | 寫入 1 筆 `SyncLog`，三個計數欄位與實際結果一致 |
+| 10 | 通知（§9.1） | 寄送成功回寫 `NotifiedAt`；寄送失敗時同步仍成功、`NotifiedAt` 維持 null |
+
+**驗收**：`dotnet test` 全數通過；任一條規則的門檻或條件被改動時，對應測項需失敗。
+
+## 13. 部署
+
+### 13.1 本機 Docker Compose
+
+`docker-compose.yml` 一次帶起 demo 需要的四個容器，讓不熟悉專案的人不必手動裝 SQL Server
+與 SMTP 工具：
+
+| 服務 | 說明 | 對外埠 |
+|---|---|---|
+| `sqlserver` | `mcr.microsoft.com/mssql/server:2022-latest`，本地 DB | 1433 |
+| `mailpit` | 本機 SMTP 測試工具，收異常通知信 | 1025 (SMTP) / 8025 (Web UI) |
+| `mocksap` | `MockSap.Api`，模擬 SAP OData API | 5173 |
+| `erpsync` | `ErpSync.Api`（含 Quartz 排程與前端頁面） | 8080 |
+
+- 兩個 API 各自一份多階段 build 的 `Dockerfile`（`sdk` 階段 publish、`aspnet` 階段執行）
+- 連線字串、`SapApi:BaseUrl`、`Smtp:Host` 以環境變數覆寫 `appsettings.json`，
+  程式碼不需要為容器環境做任何分支
+- 容器內不做 HTTPS 轉址（沒有憑證），`ErpSync.Api` 只在非容器環境啟用 `UseHttpsRedirection`
+- DB schema 由 `ErpSync.Api` 啟動時自動套用 Migration（設定 `Database:AutoMigrate=true` 才執行），
+  避免容器環境還要另外跑 `dotnet ef database update`；SQL Server 容器啟動較慢，
+  套用前以重試等待其就緒
+
+**驗收**：在乾淨環境執行 `docker compose up -d --build` 後，`http://localhost:8080` 能開啟
+前端頁面、排程在 1 分鐘內完成第一次同步、異常清單出現 2 筆、Mailpit UI 收到對應通知信。
+
+### 13.2 Azure App Service
+
+以「展示得起來」為目標，不做 CI/CD pipeline：
+
+- `MockSap.Api` 與 `ErpSync.Api` 各部署為一個 Linux App Service（同一個 App Service Plan）
+- DB 用 Azure SQL Database（Basic 層級），連線字串放 App Service 的
+  Connection strings（`Default`，type = SQLAzure），不進 git
+- `SapApi__BaseUrl` 指向 Mock API 的 App Service URL；雲端環境沒有 SMTP，
+  `Smtp__Enabled=false` 關閉通知（同步流程本來就設計成通知失敗不影響同步）
+- 部署方式：`dotnet publish` 後用 `az webapp deploy` 上傳 zip，步驟寫在
+  `docs/deploy-azure.md`，讓流程可重現
+
+**驗收**：Azure 上的 ErpSync App Service URL 可直接開啟前端頁面並看到同步後的資料。
+
+## 14. Out of Scope（Non-Goals 的具體對應）
 
 - 前端只做清單呈現與篩選，不做圖表視覺化
 - 不處理多幣別金額換算比較（NetAmount 比較僅限同幣別內的簡單場景）
 - 不處理採購單狀態機轉換（例如核准/駁回流程）
 
-## 13. Demo Script
+## 15. Demo Script
 
 1. 啟動 Mock API + ErpSync.Api，觸發第一次同步
 2. 前端「異常清單」直接顯示 2 筆異常（1 筆逾期、1 筆價格異常）——不需要臨時操作，種子資料已內建
