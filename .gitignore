@@ -3,6 +3,7 @@ CONTEXT.md
 progress/plan.md
 progress/day4-summary.html
 progress/day5-summary.html
+docs/deploy-azure.md
 
 # .NET
 bin/
@@ -15,3 +16,4 @@ obj/
 
 # Serilog 輸出
 logs/
+logs-erpsync/
