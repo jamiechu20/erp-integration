@@ -1,5 +1,6 @@
 using ErpSync.Infrastructure;
 using ErpSync.Infrastructure.Persistence;
+using Scalar.AspNetCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,11 +26,9 @@ if (app.Configuration.GetValue("Database:AutoMigrate", false))
     await app.Services.MigrateDatabaseAsync();
 }
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+// Demo 專案，API 文件（/openapi/v1.json、/scalar）不分環境都開放，方便展示
+app.MapOpenApi();
+app.MapScalarApiReference();
 
 app.UseSerilogRequestLogging();
 
