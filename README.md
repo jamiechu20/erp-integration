@@ -44,7 +44,6 @@ tests/
   ErpSync.Application.Tests/  xUnit，覆蓋 PurchaseOrderSyncService 核心邏輯
 docs/
   spec.md                 技術規格（資料模型、API、業務規則）
-  deploy-azure.md          Azure App Service 部署步驟
 ```
 
 ## 怎麼跑起來
@@ -157,6 +156,4 @@ checklist 與過程中抓到的問題見 git commit history；重要技術決策
 
 ## 部署
 
-Docker Compose 為本機/展示用途，已驗證可用。Azure App Service 部署步驟見
-[docs/deploy-azure.md](docs/deploy-azure.md)（需要 Azure 訂閱與 `az login`，屬於一次性
-手動操作，尚未在本機執行）。
+Docker Compose 為本機/展示用途，已驗證可用。
