@@ -47,6 +47,10 @@ services:
       EnableHttpsRedirection: "false"    # 容器內只跑 HTTP，沒有憑證
     ports:
       - "8080:8080"
+    volumes:
+      # bind mount（不是 named volume）：容器裡的 /app/logs 直接對應到你電腦上的 ./logs-erpsync，
+      # 容器被砍掉 log 檔案還在，而且可以直接用 Finder／編輯器打開看，不用 docker exec 進去撈
+      - ./logs-erpsync:/app/logs
     depends_on:
       - sqlserver
       - mailpit
